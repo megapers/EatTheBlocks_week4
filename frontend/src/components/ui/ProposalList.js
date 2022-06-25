@@ -2,26 +2,27 @@ import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
 import { FcApproval } from "react-icons/fc";
 import { ImLibrary, ImQuill } from "react-icons/im";
-import { useEffect, useState, useContext } from "react";
-import { getBlockchain, showError } from "../../utils/common";
+import { useEffect, useState, useContext, useCallback } from "react";
+import { showError } from "../../utils/common";
 import BlockchainContext from '../../store/blockchain-context';
 
 const ProposalList = () => {
-  const [proposals, setProposals] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-
+  const [contractValues, setContractValues] = useState({proposals: [], isAdmin: false});
   const blockchainContext = useContext(BlockchainContext);
   const provider = blockchainContext.provider;
 
-  const getProposals = async () => {
+  const getProposals = useCallback(async () => {
     const { DAOContract, signerAddress } = provider;
     try {
-      setProposals(await DAOContract.getProposals());
-      signerAddress && setIsAdmin((await DAOContract.admin()) == signerAddress);
+      signerAddress && setContractValues({
+        proposals: await DAOContract.getProposals(),
+        isAdmin: (await DAOContract.admin()) == signerAddress
+      });
+
     } catch (error) {
       showError(error);
     }
-  };
+  });
 
   const vote = async (id) => {
     const { DAOContract, signerAddress } = provider;
@@ -43,7 +44,7 @@ const ProposalList = () => {
 
   useEffect(() => {
     getProposals();
-  }, [blockchainContext.isLoaded]);
+  }, [getProposals]);
 
   return (
     <div>
@@ -63,7 +64,7 @@ const ProposalList = () => {
           </tr>
         </thead>
         <tbody>
-          {proposals.map((proposal) => (
+          {contractValues.proposals.map((proposal) => (
             <tr key={proposal.id.toString()}>
               <td>{proposal.id.toNumber()}</td>
               <td>{proposal.name}</td>
@@ -80,7 +81,7 @@ const ProposalList = () => {
                 </Button>
               </td>
               <td>
-                {isAdmin && (
+                {contractValues.isAdmin && (
                   <Button onClick={() => execute(proposal.id)}>
                     <ImLibrary /> Execute
                   </Button>
